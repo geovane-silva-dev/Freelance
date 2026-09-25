@@ -1,0 +1,30 @@
+{
+  "settings": {
+    "userName": "Geovane Silva",
+    "companyName": "GS Digital Studio",
+    "logoUrl": "",
+    "email": "geovane.silvaa2010@gmail.com",
+    "whatsapp": "",
+    "contactDetails": "",
+    "currency": "R$",
+    "hourlyRateGoal": 100,
+    "monthlyRevenueGoal": 5000,
+    "pixKey": "",
+    "theme": "light"
+  },
+  "services": [],
+  "servicePackages": [],
+  "clients": [],
+  "leads": [],
+  "projects": [],
+  "portfolio": [],
+  "payments": [],
+  "installments": [],
+  "expenses": [],
+  "timeLogs": [],
+  "tasks": [],
+  "proposals": [],
+  "events": [],
+  "clientHistory": [],
+  "files": []
+}

@@ -1,0 +1,6 @@
+{
+  "name": "FreelanceHub CRM & Projetos",
+  "description": "Sistema completo de CRM pessoal, gestão financeira, controle de projetos e horas para freelancers e criadores de sites.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
