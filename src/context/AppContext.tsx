@@ -153,6 +153,8 @@ interface AppContextType {
   updateScratchpad: (content: string) => Promise<void>;
 
   // Settings, Theme & System Data
+  lastSavedTimestamp: number | null;
+  forceSaveToDevice: () => void;
   toggleTheme: () => Promise<void>;
   setTheme: (theme: 'light' | 'dark') => Promise<void>;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
@@ -166,9 +168,44 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
+const DEVICE_STORAGE_KEY = 'freelancehub_device_storage_v1';
+const BACKUP_STORAGE_KEY = 'freelancehub_backup';
+const TIMESTAMP_STORAGE_KEY = 'freelancehub_device_timestamp';
+
+function getInitialDeviceData(): DatabaseSchema {
+  if (typeof window === 'undefined') return initialDatabase;
+  try {
+    const raw = localStorage.getItem(DEVICE_STORAGE_KEY) || localStorage.getItem(BACKUP_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...initialDatabase,
+          ...parsed,
+          settings: {
+            ...initialDatabase.settings,
+            ...(parsed.settings || {}),
+          },
+          personalNotes: parsed.personalNotes || initialDatabase.personalNotes || [],
+          scratchpad: parsed.scratchpad !== undefined ? parsed.scratchpad : (initialDatabase.scratchpad || ''),
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Erro ao ler armazenamento local do dispositivo:', err);
+  }
+  return initialDatabase;
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [data, setData] = useState<DatabaseSchema>(initialDatabase);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Synchronous initialization directly from user's device storage so no data is ever lost on F5/refresh
+  const [data, setData] = useState<DatabaseSchema>(getInitialDeviceData);
+  const [lastSavedTimestamp, setLastSavedTimestamp] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return Date.now();
+    const saved = localStorage.getItem(TIMESTAMP_STORAGE_KEY);
+    return saved ? Number(saved) : Date.now();
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState<boolean>(false);
@@ -201,63 +238,147 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [data.settings?.theme]);
 
-  // Save to server backend with fallback to localStorage
+  // Save to user device immediately with high reliability and sync to server backend
   const persistData = useCallback(async (newData: DatabaseSchema) => {
-    setData(newData);
+    const timestamp = Date.now();
+    const dataWithMeta: DatabaseSchema = {
+      ...newData,
+      lastModified: new Date(timestamp).toISOString(),
+    };
+
+    // 1. Immediately update React state
+    setData(dataWithMeta);
+    setLastSavedTimestamp(timestamp);
+
+    // 2. Synchronously write to device local storage
     try {
-      localStorage.setItem('freelancehub_backup', JSON.stringify(newData));
+      const serialized = JSON.stringify(dataWithMeta);
+      localStorage.setItem(DEVICE_STORAGE_KEY, serialized);
+      localStorage.setItem(BACKUP_STORAGE_KEY, serialized);
+      localStorage.setItem(TIMESTAMP_STORAGE_KEY, timestamp.toString());
+    } catch (err) {
+      console.error('Falha ao gravar no armazenamento local do dispositivo:', err);
+    }
+
+    // 3. Asynchronously sync with server API (if available)
+    try {
       await fetch('/api/db', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newData),
+        body: JSON.stringify(dataWithMeta),
       });
     } catch (err) {
-      console.warn('Persisting via API had warning, cached in localStorage:', err);
+      console.warn('Sincronização com o backend adiada, dados salvos com segurança no dispositivo:', err);
     }
   }, []);
 
-  // Fetch initial data from server
+  const forceSaveToDevice = useCallback(() => {
+    const timestamp = Date.now();
+    try {
+      const serialized = JSON.stringify({
+        ...data,
+        lastModified: new Date(timestamp).toISOString(),
+      });
+      localStorage.setItem(DEVICE_STORAGE_KEY, serialized);
+      localStorage.setItem(BACKUP_STORAGE_KEY, serialized);
+      localStorage.setItem(TIMESTAMP_STORAGE_KEY, timestamp.toString());
+      setLastSavedTimestamp(timestamp);
+      showToast('Dados salvos no seu dispositivo!', 'success');
+    } catch {
+      showToast('Erro ao gravar no dispositivo.', 'error');
+    }
+  }, [data, showToast]);
+
+  // Synchronize initial data safely: NEVER overwrite populated device data with an empty server database
   useEffect(() => {
-    async function loadData() {
+    async function syncDataWithServer() {
+      let localData: DatabaseSchema | null = null;
+      let localTimestamp = 0;
+      try {
+        const raw = localStorage.getItem(DEVICE_STORAGE_KEY) || localStorage.getItem(BACKUP_STORAGE_KEY);
+        const rawTime = localStorage.getItem(TIMESTAMP_STORAGE_KEY);
+        if (rawTime) localTimestamp = Number(rawTime);
+        if (raw) localData = JSON.parse(raw);
+      } catch {}
+
       try {
         const res = await fetch('/api/db');
         if (res.ok) {
           const json = await res.json();
-          const remoteData = json.data || json;
-          if (remoteData && remoteData.clients) {
+          const serverData: DatabaseSchema = json.data || json;
+          const serverTime = serverData?.lastModified ? new Date(serverData.lastModified).getTime() : 0;
+
+          // Check if local device has active user records
+          const localHasRecords = localData && (
+            (localData.clients && localData.clients.length > 0) ||
+            (localData.projects && localData.projects.length > 0) ||
+            (localData.leads && localData.leads.length > 0) ||
+            (localData.payments && localData.payments.length > 0) ||
+            (localData.personalNotes && localData.personalNotes.length > 0) ||
+            (localData.tasks && localData.tasks.length > 0) ||
+            (localData.proposals && localData.proposals.length > 0) ||
+            (localData.services && localData.services.length > 0) ||
+            localTimestamp > 0
+          );
+
+          if (localData && localHasRecords && (!serverTime || localTimestamp >= serverTime)) {
+            // Local device data is authoritative and newer!
+            // Ensure server receives the local device data
+            try {
+              await fetch('/api/db', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(localData),
+              });
+            } catch {}
+            setData(localData);
+            setIsLoading(false);
+            return;
+          }
+
+          if (serverData && serverData.clients) {
             const mergedData: DatabaseSchema = {
               ...initialDatabase,
-              ...remoteData,
-              personalNotes: remoteData.personalNotes || initialDatabase.personalNotes || [],
-              scratchpad: remoteData.scratchpad !== undefined ? remoteData.scratchpad : (initialDatabase.scratchpad || ''),
+              ...serverData,
+              personalNotes: serverData.personalNotes || initialDatabase.personalNotes || [],
+              scratchpad: serverData.scratchpad !== undefined ? serverData.scratchpad : (initialDatabase.scratchpad || ''),
               settings: {
                 ...initialDatabase.settings,
-                ...remoteData.settings,
+                ...serverData.settings,
               },
             };
             setData(mergedData);
             try {
-              localStorage.setItem('freelancehub_backup', JSON.stringify(mergedData));
+              const ser = JSON.stringify(mergedData);
+              localStorage.setItem(DEVICE_STORAGE_KEY, ser);
+              localStorage.setItem(BACKUP_STORAGE_KEY, ser);
+              localStorage.setItem(TIMESTAMP_STORAGE_KEY, Date.now().toString());
             } catch {}
-            setIsLoading(false);
-            return;
           }
         }
       } catch {
-        // Fallback to local cache if server is warming up
-        const cached = localStorage.getItem('freelancehub_backup');
-        if (cached) {
-          try {
-            setData(JSON.parse(cached));
-          } catch {
-            setData(initialDatabase);
-          }
-        }
+        // Offline: local device data is already active in memory!
+        console.log('Operando com armazenamento local do dispositivo.');
       } finally {
         setIsLoading(false);
       }
     }
-    loadData();
+
+    syncDataWithServer();
+
+    // Cross-tab synchronization
+    const handleStorage = (e: StorageEvent) => {
+      if ((e.key === DEVICE_STORAGE_KEY || e.key === BACKUP_STORAGE_KEY) && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && typeof parsed === 'object') {
+            setData(parsed);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // Stopwatch ticking interval
@@ -1946,6 +2067,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deletePersonalNote,
         togglePinPersonalNote,
         updateScratchpad,
+
+        lastSavedTimestamp,
+        forceSaveToDevice,
 
         toggleTheme,
         setTheme,

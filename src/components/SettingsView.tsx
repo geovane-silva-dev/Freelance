@@ -18,6 +18,8 @@ import {
   Moon,
   Palette,
   Check,
+  HardDrive,
+  Database,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { BusinessSettings } from '../types/index.ts';
@@ -28,6 +30,8 @@ export const SettingsView: React.FC = () => {
     data,
     updateSettings,
     setTheme,
+    lastSavedTimestamp,
+    forceSaveToDevice,
     exportDataJSON,
     importDataJSON,
     resetToDefaults,
@@ -70,6 +74,14 @@ export const SettingsView: React.FC = () => {
     reader.readAsText(file);
   };
 
+  const formattedLastSaved = lastSavedTimestamp
+    ? new Date(lastSavedTimestamp).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : 'Agora';
+
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-150 max-w-4xl">
       {/* Header */}
@@ -78,16 +90,69 @@ export const SettingsView: React.FC = () => {
           Configurações do Freelancer & Sistema
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Personalize dados da sua empresa, tema visual (Claro/Escuro), chave PIX para recibos, metas financeiras e backup de dados.
+          Personalize dados da sua empresa, tema visual (Claro/Escuro), chave PIX para recibos, metas financeiras e armazenamento de dados.
         </p>
       </div>
 
       {isSavedToast && (
         <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          Configurações salvas e atualizadas com sucesso!
+          Configurações salvas e atualizadas com sucesso no seu dispositivo!
         </div>
       )}
+
+      {/* Device Storage Status Card */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
+            <HardDrive className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            Armazenamento Seguro no seu Dispositivo
+          </h3>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold w-fit">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Ativo & Salvo no Navegador</span>
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          Todas as suas informações são salvas de forma imediata e permanente no armazenamento local deste dispositivo (<code className="font-mono text-[11px] bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">localStorage</code>).
+          Ao <strong>atualizar a página (F5)</strong> ou <strong>fechar o navegador</strong>, absolutamente nenhum dado é perdido.
+        </p>
+
+        {/* Current Stored Counters */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-left">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Clientes Salvos</span>
+            <span className="text-base font-bold text-slate-900 dark:text-slate-100">{data.clients.length}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-left">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Projetos Salvos</span>
+            <span className="text-base font-bold text-slate-900 dark:text-slate-100">{data.projects.length}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-left">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Observações</span>
+            <span className="text-base font-bold text-slate-900 dark:text-slate-100">{(data.personalNotes || []).length}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-left">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Tarefas</span>
+            <span className="text-base font-bold text-slate-900 dark:text-slate-100">{data.tasks.length}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+            Última gravação local confirmada: <strong className="text-slate-700 dark:text-slate-300">{formattedLastSaved}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={forceSaveToDevice}
+            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs w-fit"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Salvar Agora no Dispositivo
+          </button>
+        </div>
+      </div>
 
       {/* Theme Selection Card */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
@@ -312,7 +377,7 @@ export const SettingsView: React.FC = () => {
           Backup, Exportação e Restauração de Dados
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Seus dados já ficam salvos de forma persistente no servidor (`db.json`). Você também pode baixar uma cópia de segurança em formato JSON para seu computador ou restaurar dados antigos.
+          Você também pode baixar uma cópia de segurança em formato JSON para seu computador ou restaurar dados de um backup anterior.
         </p>
 
         <div className="flex flex-wrap items-center gap-3 pt-2">

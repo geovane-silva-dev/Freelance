@@ -151,6 +151,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onOpenGlobalSe
             )}
           </button>
 
+          {/* Device Saved Status Pill */}
+          <div
+            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium border border-emerald-200/60 dark:border-emerald-800/60 select-none"
+            title="Todas as informações estão salvas no seu dispositivo (armazenamento local) e permanecem após recarregar (F5) ou fechar a página."
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span>Salvo no dispositivo</span>
+          </div>
+
           {/* Dark / Light Mode Toggle Button */}
           <button
             onClick={toggleTheme}

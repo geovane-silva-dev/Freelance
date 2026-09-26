@@ -377,6 +377,7 @@ export interface DatabaseSchema {
   files: AttachedFile[];
   personalNotes?: PersonalNote[];
   scratchpad?: string;
+  lastModified?: string;
   settings: UserSettings;
 }
 
