@@ -331,6 +331,17 @@ export interface AttachedFile {
   uploadDate: string;
 }
 
+export interface PersonalNote {
+  id: string;
+  title: string;
+  content: string;
+  category?: 'general' | 'idea' | 'reminder' | 'client' | 'urgent';
+  color?: 'slate' | 'indigo' | 'amber' | 'emerald' | 'rose' | 'sky';
+  pinned?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UserSettings {
   userName: string;
   companyName: string;
@@ -364,6 +375,8 @@ export interface DatabaseSchema {
   events: CalendarEvent[];
   clientHistory: ClientHistory[];
   files: AttachedFile[];
+  personalNotes?: PersonalNote[];
+  scratchpad?: string;
   settings: UserSettings;
 }
 
@@ -381,5 +394,6 @@ export type ActiveTab =
   | 'calendar'
   | 'proposals'
   | 'services'
+  | 'notes'
   | 'reports'
   | 'settings';

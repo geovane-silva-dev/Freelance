@@ -50,13 +50,21 @@ export const ClientsView: React.FC = () => {
 
   // Filtered list
   const filteredClients = useMemo(() => {
+    const q = (search || '').toLowerCase().trim();
     return data.clients.filter((client) => {
+      const company = (client.companyName || '').toLowerCase();
+      const contact = (client.contactName || '').toLowerCase();
+      const city = (client.city || '').toLowerCase();
+      const niche = (client.niche || '').toLowerCase();
+      const email = (client.email || '').toLowerCase();
+
       const matchesSearch =
-        client.companyName.toLowerCase().includes(search.toLowerCase()) ||
-        client.contactName.toLowerCase().includes(search.toLowerCase()) ||
-        client.city.toLowerCase().includes(search.toLowerCase()) ||
-        client.niche.toLowerCase().includes(search.toLowerCase()) ||
-        client.email.toLowerCase().includes(search.toLowerCase());
+        !q ||
+        company.includes(q) ||
+        contact.includes(q) ||
+        city.includes(q) ||
+        niche.includes(q) ||
+        email.includes(q);
 
       const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
 

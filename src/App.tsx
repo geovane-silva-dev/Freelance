@@ -19,6 +19,7 @@ import { TasksView } from './components/TasksView.tsx';
 import { CalendarView } from './components/CalendarView.tsx';
 import { ProposalsView } from './components/ProposalsView.tsx';
 import { ServicesView } from './components/ServicesView.tsx';
+import { NotesView } from './components/NotesView.tsx';
 import { ReportsView } from './components/ReportsView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
 
@@ -64,6 +65,8 @@ const AppContent: React.FC = () => {
         return <ProposalsView />;
       case 'services':
         return <ServicesView />;
+      case 'notes':
+        return <NotesView />;
       case 'reports':
         return <ReportsView />;
       case 'settings':
@@ -74,7 +77,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 selection:bg-indigo-500 selection:text-white antialiased">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row text-slate-900 dark:text-slate-100 selection:bg-indigo-500 selection:text-white antialiased transition-colors">
       {/* Sidebar navigation */}
       <Sidebar
         mobileOpen={isMobileMenuOpen}

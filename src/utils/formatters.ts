@@ -100,3 +100,15 @@ export function exportToJson(filename: string, data: unknown): void {
   downloadAnchor.click();
   downloadAnchor.remove();
 }
+
+/**
+ * Retorna a data no fuso horário local do usuário no formato YYYY-MM-DD.
+ * Evita o bug de toISOString() que pula para o dia seguinte em fusos negativos (ex: Brasil UTC-3 no período noturno).
+ */
+export function getLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+

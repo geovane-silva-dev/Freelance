@@ -96,7 +96,7 @@ export const ReportsView: React.FC = () => {
 
       return {
         month: `${monthNames[monthIdx]}/${String(year).slice(2)}`,
-        revenue: monthRevenue || Math.floor(Math.random() * 4000 + 3000), // realistic baseline for presentation
+        revenue: monthRevenue,
       };
     });
 
@@ -181,7 +181,10 @@ export const ReportsView: React.FC = () => {
 
             <div className="mt-6 flex items-end justify-between h-48 gap-3 pt-6 px-2">
               {metrics.monthlyStats.map((item, i) => {
-                const heightPercent = Math.max(15, Math.round((item.revenue / metrics.maxMonthly) * 100));
+                const heightPercent =
+                  metrics.maxMonthly > 0 && item.revenue > 0
+                    ? Math.round((item.revenue / metrics.maxMonthly) * 100)
+                    : 0;
 
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
@@ -189,8 +192,12 @@ export const ReportsView: React.FC = () => {
                       {formatCurrency(item.revenue)}
                     </div>
                     <div
-                      className="w-full bg-indigo-600 group-hover:bg-indigo-700 rounded-t-xl transition-all duration-300 relative overflow-hidden"
-                      style={{ height: `${heightPercent}%` }}
+                      className={`w-full rounded-t-xl transition-all duration-300 relative overflow-hidden ${
+                        item.revenue > 0
+                          ? 'bg-indigo-600 group-hover:bg-indigo-700'
+                          : 'bg-slate-200'
+                      }`}
+                      style={{ height: item.revenue > 0 ? `${Math.max(heightPercent, 8)}%` : '4px' }}
                     >
                       <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100" />
                     </div>

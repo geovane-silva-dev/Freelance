@@ -21,8 +21,10 @@ import {
   LeadStage,
   ClientStatus,
   ProjectStatus,
+  PersonalNote,
 } from '../types/index.ts';
 import { initialDatabase, demoDatabase } from '../services/initialData.ts';
+import { getLocalDateString } from '../utils/formatters.ts';
 
 interface NotificationItem {
   id: string;
@@ -143,7 +145,16 @@ interface AppContextType {
   addFileAttachment: (file: Omit<AttachedFile, 'id' | 'uploadDate'>) => Promise<AttachedFile>;
   deleteFileAttachment: (id: string) => Promise<void>;
 
-  // Settings & System Data
+  // Personal Notes & Observações
+  addPersonalNote: (note: Omit<PersonalNote, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PersonalNote>;
+  updatePersonalNote: (id: string, updates: Partial<PersonalNote>) => Promise<void>;
+  deletePersonalNote: (id: string) => Promise<void>;
+  togglePinPersonalNote: (id: string) => Promise<void>;
+  updateScratchpad: (content: string) => Promise<void>;
+
+  // Settings, Theme & System Data
+  toggleTheme: () => Promise<void>;
+  setTheme: (theme: 'light' | 'dark') => Promise<void>;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
   resetToDemoData: () => Promise<void>;
   resetToDefaults: () => Promise<void>;
@@ -180,6 +191,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 4000);
   }, []);
 
+  // Synchronize theme with document element
+  useEffect(() => {
+    const currentTheme = data.settings?.theme || 'light';
+    if (currentTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [data.settings?.theme]);
+
   // Save to server backend with fallback to localStorage
   const persistData = useCallback(async (newData: DatabaseSchema) => {
     setData(newData);
@@ -204,9 +225,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const json = await res.json();
           const remoteData = json.data || json;
           if (remoteData && remoteData.clients) {
-            setData(remoteData);
+            const mergedData: DatabaseSchema = {
+              ...initialDatabase,
+              ...remoteData,
+              personalNotes: remoteData.personalNotes || initialDatabase.personalNotes || [],
+              scratchpad: remoteData.scratchpad !== undefined ? remoteData.scratchpad : (initialDatabase.scratchpad || ''),
+              settings: {
+                ...initialDatabase.settings,
+                ...remoteData.settings,
+              },
+            };
+            setData(mergedData);
             try {
-              localStorage.setItem('freelancehub_backup', JSON.stringify(remoteData));
+              localStorage.setItem('freelancehub_backup', JSON.stringify(mergedData));
             } catch {}
             setIsLoading(false);
             return;
@@ -391,6 +422,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newClient: Client = {
       ...clientData,
       id,
+      firstContactDate: clientData.firstContactDate || getLocalDateString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -398,7 +430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newHistory: ClientHistory = {
       id: `ch-${Date.now()}`,
       clientId: id,
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDateString(),
       type: 'auto_event',
       category: 'created',
       content: `Cliente "${newClient.companyName}" cadastrado no sistema. Origem: ${newClient.origin || 'Não informada'}.`,
@@ -431,7 +463,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newHistory.unshift({
         id: `ch-${Date.now()}`,
         clientId: id,
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
         type: 'auto_event',
         category: 'status_change',
         content: `Status do cliente alterado para "${updates.status}".`,
@@ -568,7 +600,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       instagram: lead.instagram || '',
       city: lead.city || '',
       niche: lead.niche,
-      firstContactDate: lead.contactDate || new Date().toISOString().split('T')[0],
+      firstContactDate: lead.contactDate || getLocalDateString(),
       origin: 'Prospecção / Funil',
       status: 'confirmed',
       notes: lead.notes || '',
@@ -1590,8 +1622,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // ----------------------------------------------------------------
-  // SETTINGS & SYSTEM BACKUP
+  // PERSONAL NOTES & OBSERVAÇÕES
   // ----------------------------------------------------------------
+  const addPersonalNote = async (
+    noteData: Omit<PersonalNote, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<PersonalNote> => {
+    const now = new Date().toISOString();
+    const newNote: PersonalNote = {
+      ...noteData,
+      id: `note-${Date.now()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const nextData: DatabaseSchema = {
+      ...data,
+      personalNotes: [newNote, ...(data.personalNotes || [])],
+    };
+    await persistData(nextData);
+    showToast('Observação guardada com sucesso!');
+    return newNote;
+  };
+
+  const updatePersonalNote = async (id: string, updates: Partial<PersonalNote>) => {
+    const updated = (data.personalNotes || []).map((n) =>
+      n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
+    );
+    const nextData: DatabaseSchema = {
+      ...data,
+      personalNotes: updated,
+    };
+    await persistData(nextData);
+    showToast('Observação atualizada!');
+  };
+
+  const deletePersonalNote = async (id: string) => {
+    const nextData: DatabaseSchema = {
+      ...data,
+      personalNotes: (data.personalNotes || []).filter((n) => n.id !== id),
+    };
+    await persistData(nextData);
+    showToast('Observação excluída.', 'info');
+  };
+
+  const togglePinPersonalNote = async (id: string) => {
+    const targetNote = (data.personalNotes || []).find((n) => n.id === id);
+    if (!targetNote) return;
+    const isPinned = !targetNote.pinned;
+    const updated = (data.personalNotes || []).map((n) =>
+      n.id === id ? { ...n, pinned: isPinned, updatedAt: new Date().toISOString() } : n
+    );
+    const nextData: DatabaseSchema = {
+      ...data,
+      personalNotes: updated,
+    };
+    await persistData(nextData);
+    showToast(isPinned ? 'Observação fixada no topo!' : 'Observação desfixada.', 'info');
+  };
+
+  const updateScratchpad = async (content: string) => {
+    const nextData: DatabaseSchema = {
+      ...data,
+      scratchpad: content,
+    };
+    await persistData(nextData);
+  };
+
+  // ----------------------------------------------------------------
+  // SETTINGS, THEME & SYSTEM BACKUP
+  // ----------------------------------------------------------------
+  const toggleTheme = async () => {
+    const newTheme = data.settings.theme === 'dark' ? 'light' : 'dark';
+    await updateSettings({ theme: newTheme });
+    showToast(newTheme === 'dark' ? 'Modo Escuro ativado!' : 'Modo Claro ativado!', 'info');
+  };
+
+  const setTheme = async (newTheme: 'light' | 'dark') => {
+    await updateSettings({ theme: newTheme });
+    showToast(newTheme === 'dark' ? 'Modo Escuro ativado!' : 'Modo Claro ativado!', 'info');
+  };
+
   const updateSettings = async (settingsUpdates: Partial<UserSettings>) => {
     const nextSettings: UserSettings = {
       ...data.settings,
@@ -1631,6 +1740,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       events: [],
       clientHistory: [],
       files: [],
+      personalNotes: [],
+      scratchpad: '',
     };
     await persistData(emptyDb);
     try {
@@ -1830,6 +1941,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addFileAttachment,
         deleteFileAttachment,
 
+        addPersonalNote,
+        updatePersonalNote,
+        deletePersonalNote,
+        togglePinPersonalNote,
+        updateScratchpad,
+
+        toggleTheme,
+        setTheme,
         updateSettings,
         resetToDemoData,
         resetToDefaults,

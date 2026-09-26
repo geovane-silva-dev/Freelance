@@ -29,6 +29,19 @@ export const initialDatabase: DatabaseSchema = {
   events: [],
   clientHistory: [],
   files: [],
+  personalNotes: [
+    {
+      id: 'note-welcome-1',
+      title: 'Minhas Observações & Mensagens',
+      content: 'Aqui você pode guardar anotações para si mesmo: insights de reuniões, ideias de serviços, links rápidos, metas da semana ou qualquer rascunho pessoal.\n\nUse o botão de fixar para manter mensagens importantes no topo!',
+      category: 'general',
+      color: 'indigo',
+      pinned: true,
+      createdAt: '2026-09-25T12:00:00Z',
+      updatedAt: '2026-09-25T12:00:00Z',
+    },
+  ],
+  scratchpad: '',
 };
 
 export const demoDatabase: DatabaseSchema = {
@@ -43,6 +56,29 @@ export const demoDatabase: DatabaseSchema = {
     hourlyRateGoal: 120,
     theme: 'light',
   },
+  personalNotes: [
+    {
+      id: 'note-demo-1',
+      title: 'Checklist para Fechamento de Contratos',
+      content: '1. Confirmar CNPJ/CPF e razão social\n2. Enviar proposta formal em PDF ou link\n3. Solicitar sinal de 50% via PIX antes de iniciar o design no Figma\n4. Agendar reunião de alinhamento de briefing de 30 min',
+      category: 'reminder',
+      color: 'emerald',
+      pinned: true,
+      createdAt: '2026-09-20T14:30:00Z',
+      updatedAt: '2026-09-20T14:30:00Z',
+    },
+    {
+      id: 'note-demo-2',
+      title: 'Ideias de novos pacotes de serviços',
+      content: '- Pacote de Manutenção Mensal & Hospedagem R$ 250/mês\n- Otimização de Performance e Core Web Vitals R$ 800\n- Consultoria de CRO (Otimização de Taxa de Conversão)',
+      category: 'idea',
+      color: 'amber',
+      pinned: false,
+      createdAt: '2026-09-22T09:15:00Z',
+      updatedAt: '2026-09-22T09:15:00Z',
+    },
+  ],
+  scratchpad: 'Lembrete: entrar em contato com os clientes da semana passada na sexta-feira à tarde.',
 
   services: [
     {

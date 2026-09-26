@@ -102,6 +102,8 @@ app.post('/api/clear-all', (req, res) => {
     clientHistory: [],
     files: [],
     expenses: [],
+    personalNotes: [],
+    scratchpad: '',
   };
   saveDb(emptyDb);
   res.json({ success: true, message: 'Todos os dados foram limpos com sucesso', data: dbState });

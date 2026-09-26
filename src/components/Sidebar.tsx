@@ -12,10 +12,13 @@ import {
   Calendar,
   FileText,
   Briefcase,
+  StickyNote,
   BarChart3,
   Settings,
   X,
   Zap,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { ActiveTab } from '../types/index.ts';
@@ -26,21 +29,49 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) => {
-  const { activeTab, setActiveTab, data, unreadNotificationsCount } = useApp();
+  const { activeTab, setActiveTab, data, toggleTheme } = useApp();
 
-  const menuItems: { id: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number | string }[] = [
+  const isDarkMode = data.settings?.theme === 'dark';
+
+  const menuItems: {
+    id: ActiveTab;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: number | string;
+  }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'clients', label: 'Clientes', icon: Users, badge: data.clients.length },
-    { id: 'kanban', label: 'Prospecção (Funil)', icon: Kanban, badge: data.leads.filter(l => l.stage !== 'closed' && l.stage !== 'lost').length },
-    { id: 'projects', label: 'Projetos', icon: FolderKanban, badge: data.projects.filter(p => p.status === 'in_progress').length },
+    {
+      id: 'kanban',
+      label: 'Prospecção (Funil)',
+      icon: Kanban,
+      badge: data.leads.filter((l) => l.stage !== 'closed' && l.stage !== 'lost').length,
+    },
+    {
+      id: 'projects',
+      label: 'Projetos',
+      icon: FolderKanban,
+      badge: data.projects.filter((p) => p.status === 'in_progress').length,
+    },
     { id: 'portfolio', label: 'Portfólio', icon: Globe, badge: data.portfolio.length },
     { id: 'financial', label: 'Financeiro', icon: DollarSign },
     { id: 'time', label: 'Controle de Tempo', icon: Clock },
     { id: 'profitability', label: 'Rentabilidade', icon: TrendingUp },
-    { id: 'tasks', label: 'Tarefas', icon: CheckSquare, badge: data.tasks.filter(t => !t.completed).length },
+    { id: 'tasks', label: 'Tarefas', icon: CheckSquare, badge: data.tasks.filter((t) => !t.completed).length },
     { id: 'calendar', label: 'Calendário', icon: Calendar, badge: data.events.length },
-    { id: 'proposals', label: 'Propostas', icon: FileText, badge: data.proposals.filter(p => p.status === 'sent' || p.status === 'viewed').length },
+    {
+      id: 'proposals',
+      label: 'Propostas',
+      icon: FileText,
+      badge: data.proposals.filter((p) => p.status === 'sent' || p.status === 'viewed').length,
+    },
     { id: 'services', label: 'Serviços', icon: Briefcase, badge: data.services.length },
+    {
+      id: 'notes',
+      label: 'Observações',
+      icon: StickyNote,
+      badge: (data.personalNotes || []).length > 0 ? (data.personalNotes || []).length : undefined,
+    },
     { id: 'reports', label: 'Relatórios', icon: BarChart3 },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
@@ -56,18 +87,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
       {mobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs lg:hidden"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-full w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-40 h-full w-64 bg-slate-900 dark:bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800 dark:border-slate-900 transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Brand Header */}
-        <div className="h-16 px-5 flex items-center justify-between border-b border-slate-800 bg-slate-950/40">
+        <div className="h-16 px-5 flex items-center justify-between border-b border-slate-800 dark:border-slate-900 bg-slate-950/40">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleSelect('dashboard')}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white font-black shadow-md shadow-indigo-500/20">
               <Zap className="w-5 h-5 fill-white" />
@@ -129,8 +160,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
           })}
         </div>
 
-        {/* Freelancer Footer Info */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/40">
+        {/* Freelancer Footer Info & Theme Toggle */}
+        <div className="p-3 border-t border-slate-800 dark:border-slate-900 bg-slate-950/40 space-y-2">
+          {/* Quick theme toggle */}
+          <div className="flex items-center justify-between px-2 py-1 text-xs">
+            <span className="text-[11px] font-medium text-slate-400">
+              Tema {isDarkMode ? 'Escuro' : 'Claro'}
+            </span>
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 text-[11px]"
+              title={isDarkMode ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
+            >
+              {isDarkMode ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Claro</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Escuro</span>
+                </>
+              )}
+            </button>
+          </div>
+
           <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-800/50">
             <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
               {data.settings.userName.charAt(0) || 'F'}

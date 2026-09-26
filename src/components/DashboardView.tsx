@@ -566,16 +566,18 @@ export const DashboardView: React.FC = () => {
                   {/* Visual Bar */}
                   <div className="w-full max-w-[42px] h-48 flex items-end justify-center bg-slate-50 rounded-xl overflow-hidden p-1">
                     <div
-                      style={{ height: `${Math.max(heightPercent, 4)}%` }}
+                      style={{ height: val > 0 ? `${Math.max(heightPercent, 6)}%` : '4px' }}
                       className={`w-full rounded-lg transition-all duration-300 ${
-                        activeChartMetric === 'revenue'
+                        val === 0
+                          ? 'bg-slate-200'
+                          : activeChartMetric === 'revenue'
                           ? 'bg-emerald-500 group-hover:bg-emerald-600'
                           : activeChartMetric === 'profit'
                           ? 'bg-blue-500 group-hover:bg-blue-600'
                           : activeChartMetric === 'hours'
                           ? 'bg-purple-500 group-hover:bg-purple-600'
                           : 'bg-indigo-500 group-hover:bg-indigo-600'
-                      } ${val === 0 ? 'opacity-20' : ''}`}
+                      }`}
                     />
                   </div>
 

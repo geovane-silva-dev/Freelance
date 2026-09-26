@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Building2, User, Phone, Mail, Instagram, MapPin, Tag, Calendar, FileText, Globe } from 'lucide-react';
 import { Client, ClientStatus } from '../types/index.ts';
+import { getLocalDateString } from '../utils/formatters.ts';
 
 interface ClientModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     email: '',
     city: '',
     niche: '',
-    firstContactDate: new Date().toISOString().split('T')[0],
+    firstContactDate: getLocalDateString(),
     origin: 'Instagram',
     notes: '',
     status: 'lead' as ClientStatus,
@@ -56,7 +57,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         email: clientToEdit.email || '',
         city: clientToEdit.city || '',
         niche: clientToEdit.niche || '',
-        firstContactDate: clientToEdit.firstContactDate || new Date().toISOString().split('T')[0],
+        firstContactDate: clientToEdit.firstContactDate || getLocalDateString(),
         origin: clientToEdit.origin || 'Instagram',
         notes: clientToEdit.notes || '',
         status: clientToEdit.status || 'lead',
@@ -71,7 +72,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         email: '',
         city: '',
         niche: '',
-        firstContactDate: new Date().toISOString().split('T')[0],
+        firstContactDate: getLocalDateString(),
         origin: 'Instagram',
         notes: '',
         status: 'lead',
@@ -87,7 +88,10 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSave(formData);
+      await onSave({
+        ...formData,
+        firstContactDate: formData.firstContactDate || getLocalDateString(),
+      });
       onClose();
     } finally {
       setIsSubmitting(false);
