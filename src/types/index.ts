@@ -210,6 +210,7 @@ export interface TimeLog {
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskStatus = 'pending' | 'in_progress' | 'in_review' | 'completed' | 'cancelled';
 
 export interface Task {
   id: string;
@@ -217,6 +218,7 @@ export interface Task {
   clientId?: string;
   title: string;
   completed: boolean;
+  status?: TaskStatus;
   dueDate?: string;
   priority: TaskPriority;
   createdAt: string;

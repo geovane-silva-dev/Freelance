@@ -22,6 +22,7 @@ import {
   ClientStatus,
   ProjectStatus,
   PersonalNote,
+  TaskStatus,
 } from '../types/index.ts';
 import { initialDatabase, demoDatabase } from '../services/initialData.ts';
 import { getLocalDateString } from '../utils/formatters.ts';
@@ -1370,7 +1371,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newTask: Task = {
       ...taskData,
       id: `tsk-${Date.now()}`,
-      completed: false,
+      completed: taskData.status === 'completed',
+      status: taskData.status || 'pending',
       createdAt: new Date().toISOString(),
     };
 
@@ -1402,8 +1404,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const task = data.tasks.find((t) => t.id === id);
     if (!task) return;
 
-    const updatedTasks = data.tasks.map((t) =>
-      t.id === id ? { ...t, completed: !t.completed } : t
+    const nextCompleted = !task.completed;
+    const nextStatus: TaskStatus = nextCompleted ? 'completed' : 'pending';
+
+    const updatedTasks: Task[] = data.tasks.map((t) =>
+      t.id === id ? { ...t, completed: nextCompleted, status: nextStatus } : t
     );
 
     // Automation: recalculate project progress %
@@ -1427,8 +1432,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-    const updatedTasks = data.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t));
-    const nextData: DatabaseSchema = { ...data, tasks: updatedTasks };
+    const task = data.tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    let newCompleted = task.completed;
+    if (updates.status !== undefined) {
+      newCompleted = updates.status === 'completed';
+    } else if (updates.completed !== undefined) {
+      newCompleted = updates.completed;
+    }
+
+    let newStatus: TaskStatus = task.status || (task.completed ? 'completed' : 'pending');
+    if (updates.status !== undefined) {
+      newStatus = updates.status;
+    } else if (updates.completed !== undefined) {
+      newStatus = updates.completed ? 'completed' : 'pending';
+    }
+
+    const updatedTasks: Task[] = data.tasks.map((t) =>
+      t.id === id ? { ...t, ...updates, completed: newCompleted, status: newStatus } : t
+    );
+
+    // Automation: recalculate project progress %
+    let updatedProjects = [...data.projects];
+    if (task.projectId) {
+      const pTasks = updatedTasks.filter((t) => t.projectId === task.projectId);
+      const completedCount = pTasks.filter((t) => t.completed).length;
+      const progress = pTasks.length > 0 ? Math.round((completedCount / pTasks.length) * 100) : 0;
+
+      updatedProjects = updatedProjects.map((p) =>
+        p.id === task.projectId ? { ...p, progress, updatedAt: new Date().toISOString() } : p
+      );
+    }
+
+    const nextData: DatabaseSchema = { ...data, tasks: updatedTasks, projects: updatedProjects };
     await persistData(nextData);
     showToast('Tarefa atualizada!');
   };
